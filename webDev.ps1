@@ -192,6 +192,19 @@ Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
 if ($LASTEXITCODE -eq 0) {
     Write-Host "pnpm 版本:" -ForegroundColor Green
     & pnpm -v
+
+    # 配置 pnpm 存储目录
+    Write-Host "正在配置 pnpm 存储目录..." -ForegroundColor Cyan
+    $pnpmBaseDir = "$basePath\pnpm"
+    & pnpm config set store-dir "$pnpmBaseDir\store\.pnpm-store"
+    & pnpm config set global-dir "$pnpmBaseDir\global-dir"
+    & pnpm config set global-bin-dir "$pnpmBaseDir\global-dir\.bin"
+    & pnpm config set state-dir "$pnpmBaseDir\state-dir"
+    & pnpm config set cache-dir "$pnpmBaseDir\cache-dir"
+
+    Write-Host "pnpm 配置完成:" -ForegroundColor Green
+    Write-Host "  store-dir: $pnpmBaseDir\store\.pnpm-store" -ForegroundColor White
+    Write-Host "  global-bin-dir: $pnpmBaseDir\global-dir\.bin" -ForegroundColor White
 } else {
     Write-Host "pnpm 安装失败，请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Red
 }
