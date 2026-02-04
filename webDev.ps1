@@ -119,6 +119,14 @@ $hooksContent = @'
     "distro": {
       "template": "https://registry.npmmirror.com/pnpm/-/pnpm-{{version}}.tgz"
     }
+  },
+  "yarn": {
+    "index": {
+      "template": "https://registry.npmmirror.com/yarn"
+    },
+    "distro": {
+      "template": "https://registry.npmmirror.com/yarn/-/yarn-{{version}}.tgz"
+    }
   }
 }
 '@
