@@ -36,6 +36,7 @@ Write-Host "正在优化用户环境变量..." -ForegroundColor Cyan
 
 # 设置自定义的 VOLTA_HOME
 [Environment]::SetEnvironmentVariable("VOLTA_HOME", "$voltaRoot\", "User")
+[Environment]::SetEnvironmentVariable("VOLTA_FEATURE_PNPM", "1", "User")
 
 # 获取当前用户 Path
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
