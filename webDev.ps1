@@ -89,11 +89,54 @@ if (!(Test-Path $voltaRoot)) { New-Item -ItemType Directory -Path $voltaRoot -Fo
 Write-Host "正在下载 Volta MSI..." -ForegroundColor Cyan
 & curl.exe --location --fail "$downloadUrl" --output "$msiPath"
 
+# 检查下载是否成功
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ 下载失败！curl 返回错误码: $LASTEXITCODE" -ForegroundColor Red
+    Write-Host "请检查网络连接或下载地址是否正确" -ForegroundColor Yellow
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+# 验证文件是否存在且有内容
+if (!(Test-Path $msiPath)) {
+    Write-Host "❌ MSI 文件不存在！下载可能失败" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+$fileSize = (Get-Item $msiPath).Length
+if ($fileSize -eq 0) {
+    Write-Host "❌ MSI 文件为空！下载不完整" -ForegroundColor Red
+    Remove-Item $msiPath -Force
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+Write-Host "✅ 下载成功！文件大小: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Green
+
 # 3. 启动安装
 Write-Host "正在安装 Volta 到 $voltaDir ..." -ForegroundColor Cyan
 # MSI 会自动处理系统环境变量
 $args = "/i `"$msiPath`" /qn /norestart INSTALLDIR=`"$voltaDir\`""
 $process = Start-Process msiexec.exe -ArgumentList $args -Wait -PassThru
+
+# 检查安装是否成功
+if ($process.ExitCode -ne 0) {
+    Write-Host "❌ Volta 安装失败！MSI 返回错误码: $($process.ExitCode)" -ForegroundColor Red
+    if (Test-Path $msiPath) { Remove-Item $msiPath -Force }
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+# 验证 Volta 是否安装成功
+if (!(Test-Path "$voltaDir\volta.exe")) {
+    Write-Host "❌ Volta 安装失败！未找到 volta.exe" -ForegroundColor Red
+    if (Test-Path $msiPath) { Remove-Item $msiPath -Force }
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+Write-Host "✅ Volta 安装成功！" -ForegroundColor Green
 
 if (Test-Path $msiPath) { Remove-Item $msiPath -Force }
 
@@ -167,21 +210,67 @@ Add-PathVariable -NewPath "%VOLTA_HOME%\bin"
 Write-Host "正在执行 volta -v 查看版本信息..." -ForegroundColor Cyan
 & volta -v
 
+# 检查 volta 命令是否可用
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Volta 命令执行失败！请检查安装是否正确" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
 # 执行volta install node
 Write-Host "正在安装 Node.js..." -ForegroundColor Cyan
 & volta install node
+
+# 检查 Node.js 安装是否成功
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Node.js 安装失败！请检查网络连接或镜像配置" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+# 验证 node 和 npm 是否可用
+$nodeVersion = & node -v 2>$null
+$npmVersion = & npm -v 2>$null
+
+if ([string]::IsNullOrEmpty($nodeVersion)) {
+    Write-Host "❌ Node.js 安装失败！node 命令不可用" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+if ([string]::IsNullOrEmpty($npmVersion)) {
+    Write-Host "❌ npm 不可用！请检查 Node.js 安装" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
 Write-Host "Node.js 版本:" -ForegroundColor Green
-& node -v
+Write-Host $nodeVersion -ForegroundColor White
 Write-Host "npm 版本:" -ForegroundColor Green
-& npm -v
+Write-Host $npmVersion -ForegroundColor White
 
 # 配置 npm 镜像源
 Write-Host "正在配置 npm 镜像源..." -ForegroundColor Cyan
 & npm config set registry https://registry.npmmirror.com
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ npm 镜像源配置失败" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
 Write-Host "当前 npm 源:" -ForegroundColor Green
 & npm config get registry
-Write-Host "当前配置 npm 缓存目录:" -ForegroundColor Green
-npm config set cache "$basePath\npm-cache"
+
+Write-Host "正在配置 npm 缓存目录..." -ForegroundColor Cyan
+& npm config set cache "$basePath\npm-cache"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ npm 缓存目录配置失败" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
 Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 & npm config get cache
 
@@ -189,24 +278,34 @@ Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 # 安装 pnpm
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
 & volta install pnpm
+
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "pnpm 版本:" -ForegroundColor Green
-    & pnpm -v
+    # 验证 pnpm 是否可用
+    $pnpmVersion = & pnpm -v 2>$null
 
-    # 配置 pnpm 存储目录
-    Write-Host "正在配置 pnpm 存储目录..." -ForegroundColor Cyan
-    $pnpmBaseDir = "$basePath\pnpm"
-    & pnpm config set store-dir "$pnpmBaseDir\store\.pnpm-store"
-    & pnpm config set global-dir "$pnpmBaseDir\global-dir"
-    & pnpm config set global-bin-dir "$pnpmBaseDir\global-dir\.bin"
-    & pnpm config set state-dir "$pnpmBaseDir\state-dir"
-    & pnpm config set cache-dir "$pnpmBaseDir\cache-dir"
+    if ([string]::IsNullOrEmpty($pnpmVersion)) {
+        Write-Host "❌ pnpm 安装失败！pnpm 命令不可用" -ForegroundColor Red
+    } else {
+        Write-Host "✅ pnpm 安装成功！" -ForegroundColor Green
+        Write-Host "pnpm 版本:" -ForegroundColor Green
+        Write-Host $pnpmVersion -ForegroundColor White
 
-    Write-Host "pnpm 配置完成:" -ForegroundColor Green
-    Write-Host "  store-dir: $pnpmBaseDir\store\.pnpm-store" -ForegroundColor White
-    Write-Host "  global-bin-dir: $pnpmBaseDir\global-dir\.bin" -ForegroundColor White
+        # 配置 pnpm 存储目录
+        Write-Host "正在配置 pnpm 存储目录..." -ForegroundColor Cyan
+        $pnpmBaseDir = "$basePath\pnpm"
+        & pnpm config set store-dir "$pnpmBaseDir\store\.pnpm-store"
+        & pnpm config set global-dir "$pnpmBaseDir\global-dir"
+        & pnpm config set global-bin-dir "$pnpmBaseDir\global-dir\.bin"
+        & pnpm config set state-dir "$pnpmBaseDir\state-dir"
+        & pnpm config set cache-dir "$pnpmBaseDir\cache-dir"
+
+        Write-Host "pnpm 配置完成:" -ForegroundColor Green
+        Write-Host "  store-dir: $pnpmBaseDir\store\.pnpm-store" -ForegroundColor White
+        Write-Host "  global-bin-dir: $pnpmBaseDir\global-dir\.bin" -ForegroundColor White
+    }
 } else {
-    Write-Host "pnpm 安装失败，请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Red
+    Write-Host "❌ pnpm 安装失败！错误码: $LASTEXITCODE" -ForegroundColor Red
+    Write-Host "请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Yellow
 }
 
 
