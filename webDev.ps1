@@ -180,6 +180,11 @@ Write-Host "正在配置 npm 镜像源..." -ForegroundColor Cyan
 & npm config set registry https://registry.npmmirror.com
 Write-Host "当前 npm 源:" -ForegroundColor Green
 & npm config get registry
+Write-Host "当前配置 npm 缓存目录:" -ForegroundColor Green
+npm config set cache "$basePath\npm-cache"
+Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
+& npm config get cache
+
 
 # 安装 pnpm
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
