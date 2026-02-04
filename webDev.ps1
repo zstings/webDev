@@ -102,7 +102,26 @@ $env:Path = "$voltaDir;$env:Path"
 
 # 4. 创建 hooks.json (无 BOM UTF-8)
 Write-Host "配置 hooks.json (腾讯云镜像)..." -ForegroundColor Cyan
-$hooksContent = '{"node":{"index":{"template":"https://mirrors.cloud.tencent.com/nodejs-release/index.json"},"distro":{"template":"https://mirrors.cloud.tencent.com/nodejs-release/v{{version}}/node-v{{version}}-{{os}}-x64.zip"}}}'
+$hooksContent = @'
+{
+  "node": {
+    "index": {
+      "template": "https://mirrors.cloud.tencent.com/nodejs-release/index.json"
+    },
+    "distro": {
+      "template": "https://mirrors.cloud.tencent.com/nodejs-release/v{{version}}/node-v{{version}}-{{os}}-x64.zip"
+    }
+  },
+  "pnpm": {
+    "index": {
+      "template": "https://registry.npmmirror.com/pnpm"
+    },
+    "distro": {
+      "template": "https://registry.npmmirror.com/pnpm/-/pnpm-{{version}}.tgz"
+    }
+  }
+}
+'@
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($hooksPath, $hooksContent, $Utf8NoBom)
 
