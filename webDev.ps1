@@ -1,5 +1,63 @@
-﻿# 1. 询问存放路径
-$userInput = Read-Host "请输入存放路径 (例如 C:\ccc)"
+﻿# ========== 环境变量管理函数 ==========
+
+# 设置环境变量（永久 + 当前会话）
+function Set-EnvVariable {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+    [Environment]::SetEnvironmentVariable($Name, $Value, "User")
+    Set-Item -Path "env:$Name" -Value $Value
+}
+
+# 追加路径到 Path 环境变量（自动去重）
+function Add-PathVariable {
+    param(
+        [string]$NewPath
+    )
+
+    # 标准化路径格式
+    $NewPath = $NewPath.Replace('/', '\').TrimEnd('\')
+
+    # 获取当前用户 Path
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $pathList = New-Object System.Collections.Generic.List[string]
+
+    if ($userPath) {
+        $userPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
+            $item = $_.Trim()
+            if ($item) {
+                $pathList.Add($item)
+            }
+        }
+    }
+
+    # 检查是否已存在（忽略末尾的反斜杠）
+    $exists = $false
+    foreach ($item in $pathList) {
+        if ($item.TrimEnd('\') -eq $NewPath.TrimEnd('\')) {
+            $exists = $true
+            break
+        }
+    }
+
+    # 如果不存在，则追加
+    if (-not $exists) {
+        $pathList.Add($NewPath)
+    }
+
+    # 重新组装 Path（最后不要分号）
+    $finalPath = [string]::Join(";", $pathList)
+
+    # 设置永久和当前会话
+    [Environment]::SetEnvironmentVariable("Path", $finalPath, "User")
+    $env:Path = $finalPath
+}
+
+# ========== 主脚本开始 ==========
+
+# 1. 询问存放路径
+$userInput = Read-Host "请输入存放路径 (例如 E:\webDev)"
 $basePath = $userInput.Replace('/', '\').TrimEnd('\')
 
 # 定义路径
@@ -34,44 +92,71 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 # 5. 用户环境变量深度清理与配置
 Write-Host "正在优化用户环境变量..." -ForegroundColor Cyan
 
-# 设置自定义的 VOLTA_HOME
-[Environment]::SetEnvironmentVariable("VOLTA_HOME", "$voltaRoot\", "User")
-[Environment]::SetEnvironmentVariable("VOLTA_FEATURE_PNPM", "1", "User")
+# 设置自定义的 VOLTA_HOME 和 VOLTA_FEATURE_PNPM
+Set-EnvVariable -Name "VOLTA_HOME" -Value "$voltaRoot\"
+Set-EnvVariable -Name "VOLTA_FEATURE_PNPM" -Value "1"
 
-# 获取当前用户 Path
+# 清理旧的 AppData Volta 路径（如果存在）
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $userAppDataVolta = "$env:LOCALAPPDATA\Volta\bin"
 
-$pathList = New-Object System.Collections.Generic.List[string]
-
-if ($userPath) {
+if ($userPath -and $userPath.Contains($userAppDataVolta)) {
+    $pathList = New-Object System.Collections.Generic.List[string]
     $userPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object {
         $item = $_.Trim()
         $trimmedItem = $item.TrimEnd('\')
-        
-        # 排除规则：
-        # 1. 排除 MSI 默认生成的 AppData 路径
-        # 2. 排除已有的 %VOLTA_HOME%\bin（防止重复添加）
-        if ($trimmedItem -ne $userAppDataVolta.TrimEnd('\') -and $item -ne "%VOLTA_HOME%\bin") {
+        # 排除 MSI 默认生成的 AppData 路径
+        if ($trimmedItem -ne $userAppDataVolta.TrimEnd('\')) {
             $pathList.Add($item)
         }
     }
+    $cleanedPath = [string]::Join(";", $pathList)
+    [Environment]::SetEnvironmentVariable("Path", $cleanedPath, "User")
+    Write-Host "已清理旧路径: $userAppDataVolta" -ForegroundColor Yellow
 }
 
-# 仅追加我们自定义的数据 bin 目录
-$pathList.Add("%VOLTA_HOME%\bin")
+# 追加自定义的 Volta bin 目录到 Path
+Add-PathVariable -NewPath "%VOLTA_HOME%\bin"
 
-# 重新组装并写入
-$finalUserPath = [string]::Join(";", $pathList)
-[Environment]::SetEnvironmentVariable("Path", $finalUserPath, "User")
+# 执行volta -v 查看版本信息
+Write-Host "正在执行 volta -v 查看版本信息..." -ForegroundColor Cyan
+& volta -v
+
+# 执行volta install node
+Write-Host "正在安装 Node.js..." -ForegroundColor Cyan
+& volta install node
+Write-Host "Node.js 版本:" -ForegroundColor Green
+& node -v
+Write-Host "npm 版本:" -ForegroundColor Green
+& npm -v
+
+# 配置 npm 镜像源
+Write-Host "正在配置 npm 镜像源..." -ForegroundColor Cyan
+& npm config set registry https://registry.npmmirror.com
+Write-Host "当前 npm 源:" -ForegroundColor Green
+& npm config get registry
+
+# 安装 pnpm
+Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
+& volta install pnpm
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "pnpm 版本:" -ForegroundColor Green
+    & pnpm -v
+} else {
+    Write-Host "pnpm 安装失败，请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Red
+}
+
+
 
 Write-Host "`n✅ 安装与配置已完成！" -ForegroundColor Green
-Write-Host "--------------------------------------------------"
-Write-Host "软件安装位置 (系统变量): $voltaDir\"
-Write-Host "数据存放位置 (VOLTA_HOME): $voltaRoot\"
-Write-Host "已清理多余路径: $userAppDataVolta"
-Write-Host "--------------------------------------------------"
-Write-Host "💡 请重启终端后，输入 'volta -v' 验证。"
+Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+Write-Host "软件安装位置: $voltaDir\" -ForegroundColor White
+Write-Host "数据存放位置 (VOLTA_HOME): $voltaRoot\" -ForegroundColor White
+Write-Host "已安装工具: Node.js, npm, pnpm" -ForegroundColor White
+Write-Host "npm 镜像源: https://registry.npmmirror.com" -ForegroundColor White
+Write-Host "--------------------------------------------------" -ForegroundColor Cyan
+Write-Host "💡 新终端窗口将自动识别这些工具。" -ForegroundColor Yellow
+Write-Host "💡 当前窗口已可以直接使用 volta, node, npm, pnpm 命令。" -ForegroundColor Yellow
 
 # 保持窗口开启
 Read-Host "`n全部执行完毕，按回车键关闭窗口..."
