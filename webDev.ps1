@@ -19,7 +19,7 @@ function Add-PathVariable {
     # 标准化路径格式
     $NewPath = $NewPath.Replace('/', '\').TrimEnd('\')
 
-    # 获取当前用户 Path
+    # 1. 更新永久的用户级 Path
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $pathList = New-Object System.Collections.Generic.List[string]
 
@@ -32,26 +32,40 @@ function Add-PathVariable {
         }
     }
 
-    # 检查是否已存在（忽略末尾的反斜杠）
-    $exists = $false
+    # 检查用户级 Path 是否已存在（忽略末尾的反斜杠）
+    $existsInUser = $false
     foreach ($item in $pathList) {
         if ($item.TrimEnd('\') -eq $NewPath.TrimEnd('\')) {
-            $exists = $true
+            $existsInUser = $true
             break
         }
     }
 
-    # 如果不存在，则追加
-    if (-not $exists) {
+    # 如果不存在，则追加到用户级
+    if (-not $existsInUser) {
         $pathList.Add($NewPath)
     }
 
-    # 重新组装 Path（最后不要分号）
-    $finalPath = [string]::Join(";", $pathList)
+    # 重新组装用户级 Path（最后不要分号）
+    $finalUserPath = [string]::Join(";", $pathList)
+    [Environment]::SetEnvironmentVariable("Path", $finalUserPath, "User")
 
-    # 设置永久和当前会话
-    [Environment]::SetEnvironmentVariable("Path", $finalPath, "User")
-    $env:Path = $finalPath
+    # 2. 更新当前会话的 Path（追加展开后的路径）
+    if (-not $existsInUser) {
+        $expandedPath = [Environment]::ExpandEnvironmentVariables($NewPath)
+        # 检查当前会话的 Path 中是否已包含（忽略大小写）
+        $pathItems = $env:Path.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)
+        $existsInCurrent = $false
+        foreach ($item in $pathItems) {
+            if ($item.TrimEnd('\').Trim() -eq $expandedPath.TrimEnd('\')) {
+                $existsInCurrent = $true
+                break
+            }
+        }
+        if (-not $existsInCurrent) {
+            $env:Path = "$env:Path;$expandedPath"
+        }
+    }
 }
 
 # ========== 主脚本开始 ==========
@@ -83,6 +97,9 @@ $process = Start-Process msiexec.exe -ArgumentList $args -Wait -PassThru
 
 if (Test-Path $msiPath) { Remove-Item $msiPath -Force }
 
+# MSI 安装后，将 Volta 安装目录添加到当前会话的 Path（系统级 Path 已由 MSI 添加，但当前窗口还未生效）
+$env:Path = "$voltaDir;$env:Path"
+
 # 4. 创建 hooks.json (无 BOM UTF-8)
 Write-Host "配置 hooks.json (腾讯云镜像)..." -ForegroundColor Cyan
 $hooksContent = '{"node":{"index":{"template":"https://mirrors.cloud.tencent.com/nodejs-release/index.json"},"distro":{"template":"https://mirrors.cloud.tencent.com/nodejs-release/v{{version}}/node-v{{version}}-{{os}}-x64.zip"}}}'
@@ -112,6 +129,7 @@ if ($userPath -and $userPath.Contains($userAppDataVolta)) {
     }
     $cleanedPath = [string]::Join(";", $pathList)
     [Environment]::SetEnvironmentVariable("Path", $cleanedPath, "User")
+
     Write-Host "已清理旧路径: $userAppDataVolta" -ForegroundColor Yellow
 }
 
