@@ -197,7 +197,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # 执行mise install node
 Write-Host "正在安装 Node.js..." -ForegroundColor Cyan
-& mise install node
+& mise install node --verbose
 
 # 检查 Node.js 安装是否成功
 if ($LASTEXITCODE -ne 0) {
@@ -206,7 +206,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 # 执行mise use -g node（全局激活）
-& mise use -g node
+& mise use -g node --verbose
 
 
 # 验证 node 和 npm 是否可用
@@ -269,10 +269,10 @@ Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 
 # 安装 pnpm
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
-& mise install pnpm
+& mise install pnpm --verbose
 
 # 全局激活 pnpm
-& mise use -g pnpm
+& mise use -g pnpm --verbose
 
 if ($LASTEXITCODE -eq 0) {
     # 验证 pnpm 是否可用
