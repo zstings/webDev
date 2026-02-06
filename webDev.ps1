@@ -179,7 +179,7 @@ Set-EnvVariable -Name "MISE_CONFIG_DIR" -Value "$miseRoot\config"
 Set-EnvVariable -Name "MISE_GLOBAL_CONFIG_FILE" -Value "$miseRoot\config\config.toml"
 
 # 配置 mise 下载镜像源（使用国内镜像加速）
-Set-EnvVariable -Name "MISE_NODE_MIRROR_URL" -Value "https://npmmirror.com/mirrors/node"
+Set-EnvVariable -Name "MISE_NODE_MIRROR_URL" -Value "https://mirrors.cloud.tencent.com/nodejs-release/"
 
 # 追加 Mise 数据目录 到 Path（用于访问 node、pnpm 等工具）
 Add-PathVariable -NewPath "$miseRoot\mise\shims"
@@ -271,10 +271,9 @@ Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
 & mise install pnpm --verbose
 
-# 全局激活 pnpm
-& mise use -g pnpm --verbose
-
 if ($LASTEXITCODE -eq 0) {
+    # 全局激活 pnpm
+    & mise use -g pnpm --verbose
     # 验证 pnpm 是否可用
     $pnpmVersion = & pnpm -v 2>$null
 
