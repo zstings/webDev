@@ -244,7 +244,7 @@ Write-Host "当前 npm 源:" -ForegroundColor Green
 & npm config get registry
 
 Write-Host "正在配置 npm 全局目录..." -ForegroundColor Cyan
-& npm config set cache "$basePath\npm\global"
+& npm config set global "$basePath\npm\global"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ npm 全局目录配置失败" -ForegroundColor Red
@@ -256,7 +256,7 @@ Write-Host "当前 npm 全局目录:" -ForegroundColor Green
 & npm config get global
 
 Write-Host "正在配置 npm 缓存目录..." -ForegroundColor Cyan
-& npm config set cache "$basePath\npm-cache"
+& npm config set cache "$basePath\npm\cache"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ npm 缓存目录配置失败" -ForegroundColor Red
