@@ -175,10 +175,6 @@ Set-EnvVariable -Name "MISE_TMP_DIR" -Value "$miseRoot\tmp"
 # mise 存储系统范围配置的目录
 Set-EnvVariable -Name "MISE_SYSTEM_DIR" -Value "$miseRoot\system"
 Set-EnvVariable -Name "MISE_CONFIG_DIR" -Value "$miseRoot\config"
-# 通往配置文件的路径 默认：（通常是 ~/.config/mise/config.toml）$MISE_CONFIG_DIR/config.toml
-Set-EnvVariable -Name "MISE_GLOBAL_CONFIG_FILE" -Value "$miseRoot\config\config.json"
-# 全局配置文件的路径
-Set-EnvVariable -Name "MISE_GLOBAL_CONFIG_ROOT" -Value "$miseRoot\global_config"
 
 # 追加 Mise 数据目录 到 Path（用于访问 node、pnpm 等工具）
 Add-PathVariable -NewPath "$miseRoot\mise\shims"
@@ -204,6 +200,9 @@ if ($LASTEXITCODE -ne 0) {
     Read-Host "`n按回车键退出..."
     exit 1
 }
+# 执行mise use node
+& mise use node
+
 
 # 验证 node 和 npm 是否可用
 $nodeVersion = & node -v 2>$null
