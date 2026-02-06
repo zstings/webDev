@@ -244,7 +244,7 @@ Write-Host "当前 npm 源:" -ForegroundColor Green
 & npm config get registry
 
 Write-Host "正在配置 npm 全局目录..." -ForegroundColor Cyan
-& npm config set global "$basePath\npm\global"
+& npm config set prefix "$basePath\npm\global"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ npm 全局目录配置失败" -ForegroundColor Red
@@ -253,7 +253,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "当前 npm 全局目录:" -ForegroundColor Green
-& npm config get global
+& npm config get prefix
 
 Write-Host "正在配置 npm 缓存目录..." -ForegroundColor Cyan
 & npm config set cache "$basePath\npm\cache"
@@ -267,42 +267,50 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 & npm config get cache
 
-# 安装 pnpm
-Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
-& mise install pnpm
+# 安装 pnpm（直接使用 npm 安装，因为 mise 的 pnpm 支持有问题）
+Write-Host "正在通过 npm 安装 pnpm..." -ForegroundColor Cyan
+& npm install -g pnpm
 
-# 全局激活 pnpm
-& mise use -g pnpm
-
-if ($LASTEXITCODE -eq 0) {
-    # 验证 pnpm 是否可用
-    $pnpmVersion = & pnpm -v 2>$null
-
-    if ([string]::IsNullOrEmpty($pnpmVersion)) {
-        Write-Host "❌ pnpm 安装失败！pnpm 命令不可用" -ForegroundColor Red
-    } else {
-        Write-Host "✅ pnpm 安装成功！" -ForegroundColor Green
-        Write-Host "pnpm 版本:" -ForegroundColor Green
-        Write-Host $pnpmVersion -ForegroundColor White
-
-        # 配置 pnpm 存储目录
-        Write-Host "正在配置 pnpm 存储目录..." -ForegroundColor Cyan
-        $pnpmBaseDir = "$basePath\pnpm"
-        & pnpm config set store-dir "$pnpmBaseDir\store\.pnpm-store"
-        & pnpm config set global-dir "$pnpmBaseDir\global-dir"
-        & pnpm config set global-bin-dir "$pnpmBaseDir\global-dir\.bin"
-        & pnpm config set state-dir "$pnpmBaseDir\state-dir"
-        & pnpm config set cache-dir "$pnpmBaseDir\cache-dir"
-
-        Write-Host "pnpm 配置完成:" -ForegroundColor Green
-        Write-Host "  store-dir: $pnpmBaseDir\store\.pnpm-store" -ForegroundColor White
-        Write-Host "  global-bin-dir: $pnpmBaseDir\global-dir\.bin" -ForegroundColor White
-    }
-} else {
+if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ pnpm 安装失败！错误码: $LASTEXITCODE" -ForegroundColor Red
-    Write-Host "请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Yellow
+    Write-Host "请检查网络连接" -ForegroundColor Yellow
+    Read-Host "`n按回车键退出..."
     exit 1
 }
+
+# 验证 pnpm 是否可用
+$pnpmVersion = & pnpm -v 2>$null
+
+if ([string]::IsNullOrEmpty($pnpmVersion)) {
+    Write-Host "❌ pnpm 命令不可用" -ForegroundColor Red
+    Read-Host "`n按回车键退出..."
+    exit 1
+}
+
+Write-Host "✅ pnpm 安装成功！" -ForegroundColor Green
+Write-Host "pnpm 版本:" -ForegroundColor Green
+Write-Host $pnpmVersion -ForegroundColor White
+
+# 配置 pnpm 镜像源
+Write-Host "正在配置 pnpm 镜像源..." -ForegroundColor Cyan
+& pnpm config set registry https://registry.npmmirror.com
+
+# 配置 pnpm 存储目录
+Write-Host "正在配置 pnpm 存储目录..." -ForegroundColor Cyan
+$pnpmBaseDir = "$basePath\pnpm"
+& pnpm config set store-dir "$pnpmBaseDir\store\.pnpm-store"
+& pnpm config set global-dir "$pnpmBaseDir\global-dir"
+& pnpm config set global-bin-dir "$pnpmBaseDir\global-dir\.bin"
+& pnpm config set state-dir "$pnpmBaseDir\state-dir"
+& pnpm config set cache-dir "$pnpmBaseDir\cache-dir"
+
+# 添加 pnpm 全局 bin 目录到 PATH
+Add-PathVariable -NewPath "$pnpmBaseDir\global-dir\.bin"
+
+Write-Host "pnpm 配置完成:" -ForegroundColor Green
+Write-Host "  registry: https://registry.npmmirror.com" -ForegroundColor White
+Write-Host "  store-dir: $pnpmBaseDir\store\.pnpm-store" -ForegroundColor White
+Write-Host "  global-bin-dir: $pnpmBaseDir\global-dir\.bin" -ForegroundColor White
 
 
 
