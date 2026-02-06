@@ -68,9 +68,16 @@ function Add-PathVariable {
 
 # ========== 主脚本开始 ==========
 
-# 1. 询问存放路径
-$userInput = Read-Host "请输入存放路径 (例如 E:\webDev)"
-$basePath = $userInput.Replace('/', '\').TrimEnd('\')
+# 1. 询问存放路径（支持带zip文件路径）
+Write-Host "请输入存放路径，格式如下：" -ForegroundColor Yellow
+Write-Host "  - 只输入路径: E:\webDev (将自动下载)" -ForegroundColor Gray
+Write-Host "  - 带zip文件: E:\webDev E:\mise-v2026.2.3-windows-x64.zip (跳过下载)" -ForegroundColor Gray
+$userInput = Read-Host "输入"
+
+# 解析输入（分离路径和zip文件）
+$inputParts = $userInput -split '\s+', 2
+$basePath = $inputParts[0].Replace('/', '\').TrimEnd('\')
+$providedZipPath = if ($inputParts.Count -eq 2) { $inputParts[1].Trim() } else { $null }
 
 # 定义路径
 $miseDir = "$basePath\mise"
@@ -83,34 +90,62 @@ $downloadUrl = "https://ghfast.top/https://github.com/jdx/mise/releases/download
 if (!(Test-Path $basePath)) { New-Item -ItemType Directory -Path $basePath -Force | Out-Null }
 if (!(Test-Path $miseRoot)) { New-Item -ItemType Directory -Path $miseRoot -Force | Out-Null }
 
-# 2. 下载 (使用 curl)
-Write-Host "正在下载 mise zip..." -ForegroundColor Cyan
-& curl.exe --location --fail "$downloadUrl" --output "$msiPath"
+# 2. 下载或使用指定的 zip 文件
+if ($providedZipPath) {
+    # 使用用户提供的 zip 文件
+    Write-Host "检测到指定的 zip 文件，跳过下载..." -ForegroundColor Cyan
 
-# 检查下载是否成功
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ 下载失败！curl 返回错误码: $LASTEXITCODE" -ForegroundColor Red
-    Write-Host "请检查网络连接或下载地址是否正确" -ForegroundColor Yellow
-    Read-Host "`n按回车键退出..."
-    exit 1
+    # 验证提供的文件是否存在
+    if (!(Test-Path $providedZipPath)) {
+        Write-Host "❌ 指定的 ZIP 文件不存在: $providedZipPath" -ForegroundColor Red
+        Read-Host "`n按回车键退出..."
+        exit 1
+    }
+
+    # 验证文件大小
+    $fileSize = (Get-Item $providedZipPath).Length
+    if ($fileSize -eq 0) {
+        Write-Host "❌ 指定的 ZIP 文件为空！" -ForegroundColor Red
+        Read-Host "`n按回车键退出..."
+        exit 1
+    }
+
+    Write-Host "✅ 使用指定文件: $providedZipPath" -ForegroundColor Green
+    Write-Host "   文件大小: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Green
+
+    # 复制到目标位置
+    Copy-Item -Path $providedZipPath -Destination $msiPath -Force
+
+} else {
+    # 原有的下载逻辑
+    Write-Host "正在下载 mise zip..." -ForegroundColor Cyan
+    & curl.exe --location --fail "$downloadUrl" --output "$msiPath"
+
+    # 检查下载是否成功
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ 下载失败！curl 返回错误码: $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "请检查网络连接或下载地址是否正确" -ForegroundColor Yellow
+        Read-Host "`n按回车键退出..."
+        exit 1
+    }
+
+    # 验证文件是否存在且有内容
+    if (!(Test-Path $msiPath)) {
+        Write-Host "❌ ZIP 文件不存在！下载可能失败" -ForegroundColor Red
+        Read-Host "`n按回车键退出..."
+        exit 1
+    }
+
+    $fileSize = (Get-Item $msiPath).Length
+    if ($fileSize -eq 0) {
+        Write-Host "❌ ZIP 文件为空！下载不完整" -ForegroundColor Red
+        Remove-Item $msiPath -Force
+        Read-Host "`n按回车键退出..."
+        exit 1
+    }
+
+    Write-Host "✅ 下载成功！文件大小: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Green
 }
-
-# 验证文件是否存在且有内容
-if (!(Test-Path $msiPath)) {
-    Write-Host "❌ ZIP 文件不存在！下载可能失败" -ForegroundColor Red
-    Read-Host "`n按回车键退出..."
-    exit 1
-}
-
-$fileSize = (Get-Item $msiPath).Length
-if ($fileSize -eq 0) {
-    Write-Host "❌ ZIP 文件为空！下载不完整" -ForegroundColor Red
-    Remove-Item $msiPath -Force
-    Read-Host "`n按回车键退出..."
-    exit 1
-}
-
-Write-Host "✅ 下载成功！文件大小: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Green
 
 # 3. 解压安装
 Write-Host "正在解压 Mise 到 $miseDir ..." -ForegroundColor Cyan
@@ -301,7 +336,7 @@ if ($LASTEXITCODE -eq 0) {
     }
 } else {
     Write-Host "❌ pnpm 安装失败！错误码: $LASTEXITCODE" -ForegroundColor Red
-    Write-Host "请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Yellow
+    Write-Host "请检查网络" -ForegroundColor Yellow
     Read-Host "`n按回车键退出..."
     exit 1
 }
