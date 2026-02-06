@@ -178,6 +178,9 @@ Set-EnvVariable -Name "MISE_CONFIG_DIR" -Value "$miseRoot\config"
 # 通往配置文件的路径 默认：（通常是 ~/.config/mise/config.toml）$MISE_CONFIG_DIR/config.toml
 Set-EnvVariable -Name "MISE_GLOBAL_CONFIG_FILE" -Value "$miseRoot\config\config.toml"
 
+# 配置 mise 下载镜像源（使用国内镜像加速）
+Set-EnvVariable -Name "MISE_NODE_MIRROR_URL" -Value "https://npmmirror.com/mirrors/node"
+
 # 追加 Mise 数据目录 到 Path（用于访问 node、pnpm 等工具）
 Add-PathVariable -NewPath "$miseRoot\mise\shims"
 
@@ -268,6 +271,9 @@ Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
 & mise install pnpm
 
+# 全局激活 pnpm
+& mise use -g pnpm
+
 if ($LASTEXITCODE -eq 0) {
     # 验证 pnpm 是否可用
     $pnpmVersion = & pnpm -v 2>$null
@@ -295,6 +301,7 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Host "❌ pnpm 安装失败！错误码: $LASTEXITCODE" -ForegroundColor Red
     Write-Host "请检查网络或 VOLTA_FEATURE_PNPM 环境变量" -ForegroundColor Yellow
+    exit 1
 }
 
 
