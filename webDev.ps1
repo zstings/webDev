@@ -196,6 +196,7 @@ Write-Host "✅ Mise 安装成功！" -ForegroundColor Green
 
 # 将 Mise 安装目录添加到当前会话的用户级 Path 和 用户级环境变量
 Add-PathVariable -NewPath "$miseDir\bin"
+Add-PathVariable -NewPath "$basePath\npm\global"
 
 # 5. 用户环境变量深度清理与配置
 Write-Host "正在优化用户环境变量..." -ForegroundColor Cyan
