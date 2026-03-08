@@ -251,6 +251,9 @@ $env:GITHUB_TOKEN = "your_github_token_here"
 # 然后运行脚本
 .\webDev.ps1
 ```
+或者手动环境变量（Windows 10/11）
+- 变量名：`GITHUB_TOKEN`
+- 值：你的 GitHub 个人访问令牌（PAT）
 
 如何获取 GitHub Token：
 1. 访问 [GitHub Settings → Tokens](https://github.com/settings/tokens)
