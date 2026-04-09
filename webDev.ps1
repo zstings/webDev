@@ -84,7 +84,7 @@ $miseDir = "$basePath\mise"
 $miseRoot = "$basePath\miseRoot"
 $msiPath = "$basePath\mise.zip"
 $hooksPath = "$miseRoot\hooks.json"
-$downloadUrl = "https://ghfast.top/https://github.com/jdx/mise/releases/download/v2026.2.3/mise-v2026.2.3-windows-x64.zip"
+$downloadUrl = "https://ghfast.top/https://github.com/jdx/mise/releases/download/v2026.4.6/mise-v2026.4.6-windows-x64.zip"
 
 # 创建目录
 if (!(Test-Path $basePath)) { New-Item -ItemType Directory -Path $basePath -Force | Out-Null }
