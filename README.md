@@ -11,7 +11,6 @@
 - ✅ 自动安装 Node.js、npm、pnpm
 - ✅ 智能环境变量管理（永久 + 当前会话）
 - ✅ 自动配置 npm 和 pnpm 目录
-- ✅ **GitHub API 限制自动回退**（mise 失败时使用 npm 安装 pnpm）
 - ✅ 无需管理员权限
 - ✅ 当前窗口立即可用，无需重启
 
@@ -219,31 +218,12 @@ mise current          # 显示当前激活的工具版本
 - 新打开的终端窗口会自动识别环境变量
 - 脚本会自动清理下载的 ZIP 文件
 - 支持重复运行，会自动更新配置
-
-### ⚠️ GitHub API 速率限制问题
-
-如果遇到以下错误：
-
-```
-Error: Failed to install aqua:pnpm/pnpm@latest: HTTP status client error (403 rate limit exceeded)
-WARN  GitHub rate limit exceeded. Resets at 2026-02-06 15:46:37 +08:00
-```
-
-**原因**：mise 安装 pnpm 时需要从 GitHub API 获取版本信息，未认证的 API 请求有速率限制（每小时 60 次）。
-
-**解决方案**（脚本已自动处理）：
-1. 脚本会自动检测 mise 安装失败
-2. 自动回退到使用 `npm install -g pnpm` 安装
-3. 无需人工干预，最终结果一致
-
 ### 🔧 手动解决 GitHub API 限制
 
-如果需要手动解决，可以：
+现在安装包时如果源头是gitbub，会默认使用反代镜像（ghfast.top），避免 API 限制问题。
 
-**方案一：等待限制重置**（最简单）
-- 等到错误提示的重置时间后再运行脚本
+如果需要手动添加 GitHub Token，可以：
 
-**方案二：使用 GitHub Token**（推荐）
 ```powershell
 # 设置 GitHub Token（获取方式见下文）
 $env:GITHUB_TOKEN = "your_github_token_here"
@@ -260,17 +240,6 @@ $env:GITHUB_TOKEN = "your_github_token_here"
 2. 点击 "Generate new token (classic)"
 3. 勾选 `public_repo` 权限
 4. 复制生成的 token
-
-**方案三：手动安装 pnpm**（脚本已自动执行此方案）
-```powershell
-# 使用 npm 安装 pnpm
-npm install -g pnpm
-
-# 配置 pnpm
-pnpm config set store-dir "E:\webDev\pnpm\store\.pnpm-store"
-pnpm config set global-dir "E:\webDev\pnpm\global-dir"
-pnpm config set global-bin-dir "E:\webDev\pnpm\global-dir\.bin"
-```
 
 ## 关于 Mise
 
@@ -292,7 +261,7 @@ Mise 是一个通用的开发工具版本管理器（类似于 asdf 但更快更
 | 支持语言 | Node.js、Python、Go、Ruby 等 20+ | 仅 Node.js 生态 |
 | 性能 | 极快（Rust） | 快（Rust） |
 | 配置文件 | `.mise.toml`、`.tool-versions` | `package.json` |
-| 社区支持 | 活跃 | 活跃 |
+| 社区支持 | 活跃 | 不活跃（基本停止更新） |
 | Windows 支持 | 完整支持 | 完整支持 |
 | 学习曲线 | 中等 | 简单 |
 | 适用场景 | 多语言项目、全栈开发 | 纯前端项目 |
@@ -312,13 +281,11 @@ A: pnpm 使用硬链接共享依赖，所有项目共用一个 store，大幅节
 A: 可以，重新运行脚本并输入新路径即可。旧的环境变量会被自动更新。
 
 ### Q: 如何卸载？
-A:
 1. 删除安装目录（如 `E:\webDev`）
 2. 删除用户环境变量：`MISE_*` 开头的变量
 3. 从 Path 中删除相关路径
 
 ### Q: Mise 和 nvm 有什么区别？
-A:
 - **nvm**: 只管理 Node.js 版本
 - **mise**: 管理多种语言和工具（Node.js、Python、Go、Ruby 等）
 - **性能**: mise 更快（Rust vs Shell）
