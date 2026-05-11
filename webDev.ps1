@@ -303,6 +303,16 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "当前 npm 缓存目录:" -ForegroundColor Green
 & npm config get cache
 
+# ---- 为 pnpm 配置 GitHub 反代镜像（绕过 Token 限制）----
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    # PowerShell 7 写法
+    mise settings set url_replacements '{"https://github.com/": "https://ghfast.top/https://github.com/"}'
+} else {
+    # PowerShell 5.1 写法
+    mise settings set url_replacements '{\"https://github.com/\": \"https://ghfast.top/https://github.com/\"}'
+}
+Write-Host "✅ 已配置 GitHub 反代镜像 (ghfast.top)" -ForegroundColor Cyan
+
 # 安装 pnpm
 Write-Host "正在安装 pnpm..." -ForegroundColor Cyan
 & mise install pnpm --verbose
